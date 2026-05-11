@@ -64,6 +64,6 @@ for path in glob.glob(test_img_folder):
     
     if path.endswith('.nrrd') and nrrd is not None:
         output_gray = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
-        nrrd.write('results/{:s}_rlt.nrrd'.format(base), output_gray)1
+        nrrd.write('results/{:s}_rlt.nrrd'.format(base), output_gray)
     else:
         cv2.imwrite('results/{:s}_rlt.png'.format(base), output)
