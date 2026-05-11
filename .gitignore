@@ -1,8 +1,13 @@
 # folder
-.vscode
-.venv
-.downscale
-.results
+.vscode/*
+.venv/*
+downscale/*
+results/*
+figures/*
+.idea/*
+LR/*
+
+
 # file type
 *.svg
 *.pyc

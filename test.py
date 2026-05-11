@@ -4,12 +4,16 @@ import cv2
 import numpy as np
 import torch
 import RRDBNet_arch as arch
+try:
+    import nrrd
+except ImportError:
+    nrrd = None
 
-model_path = 'models/RRDB_ESRGAN_x4.pth'  # models/RRDB_ESRGAN_x4.pth OR models/RRDB_PSNR_x4.pth
-device = torch.device('cuda')  # if you want to run on CPU, change 'cuda' -> cpu
-# device = torch.device('cpu')
+model_path = 'models/RRDB_PSNR_x4.pth'  # models/RRDB_ESRGAN_x4.pth OR models/RRDB_PSNR_x4.pth
+device = torch.device('cpu')  # if you want to run on CPU, change 'cuda' -> cpu
+# device = torch.device('cuda')
 
-test_img_folder = 'LR/*'
+test_img_folder = 'downscale/*'
 
 model = arch.RRDBNet(3, 3, 64, 23, gc=32)
 model.load_state_dict(torch.load(model_path), strict=True)
@@ -23,9 +27,31 @@ for path in glob.glob(test_img_folder):
     idx += 1
     base = osp.splitext(osp.basename(path))[0]
     print(idx, base)
+
     # read images
-    img = cv2.imread(path, cv2.IMREAD_COLOR)
-    img = img * 1.0 / 255
+    if path.endswith('.nrrd'):
+        if nrrd is None:
+            print('pynrrd not installed, skipping .nrrd file')
+            continue
+        img, _ = nrrd.read(path)
+        # Normalize to [0, 255]
+        if img.dtype == np.uint16:
+            img = (img.astype(np.float32) / 65535.0) * 255.0
+        else:
+            img = img.astype(np.float32)
+            if img.max() > 255: # Fallback for other high-bit depths
+                img = (img - img.min()) / (img.max() - img.min()) * 255.0
+        
+        # Convert grayscale to BGR if needed
+        if img.ndim == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    else:
+        img = cv2.imread(path, cv2.IMREAD_COLOR)
+        if img is None:
+            continue
+        img = img.astype(np.float32)
+
+    img = img / 255.0
     img = torch.from_numpy(np.transpose(img[:, :, [2, 1, 0]], (2, 0, 1))).float()
     img_LR = img.unsqueeze(0)
     img_LR = img_LR.to(device)
@@ -33,5 +59,10 @@ for path in glob.glob(test_img_folder):
     with torch.no_grad():
         output = model(img_LR).data.squeeze().float().cpu().clamp_(0, 1).numpy()
     output = np.transpose(output[[2, 1, 0], :, :], (1, 2, 0))
-    output = (output * 255.0).round()
-    cv2.imwrite('results/{:s}_rlt.png'.format(base), output)
+    output = (output * 255.0).round().astype(np.uint8)
+    
+    if path.endswith('.nrrd') and nrrd is not None:
+        output_gray = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
+        nrrd.write('results/{:s}_rlt.nrrd'.format(base), output_gray)
+    else:
+        cv2.imwrite('results/{:s}_rlt.png'.format(base), output)
