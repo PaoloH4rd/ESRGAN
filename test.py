@@ -13,7 +13,8 @@ model_path = 'models/RRDB_PSNR_x4.pth'  # models/RRDB_ESRGAN_x4.pth OR models/RR
 device = torch.device('cpu')  # if you want to run on CPU, change 'cuda' -> cpu
 # device = torch.device('cuda')
 
-test_img_folder = 'downscale/*'
+# test_img_folder = 'downscale/*'
+test_img_folder = 'LR/*'
 
 model = arch.RRDBNet(3, 3, 64, 23, gc=32)
 model.load_state_dict(torch.load(model_path), strict=True)
@@ -63,6 +64,6 @@ for path in glob.glob(test_img_folder):
     
     if path.endswith('.nrrd') and nrrd is not None:
         output_gray = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
-        nrrd.write('results/{:s}_rlt.nrrd'.format(base), output_gray)
+        nrrd.write('results/{:s}_rlt.nrrd'.format(base), output_gray)1
     else:
         cv2.imwrite('results/{:s}_rlt.png'.format(base), output)
